@@ -1,3 +1,10 @@
+'''
+Author: Rasmus Jensen
+Set of functions for reading, manipulating and writing star files as pandas dataframes in python.
+I made this before discovering that the starfile library exists (https://teamtomo.org/starfile/). Honestly you should probably use that instead.
+I however often use it, as I know exactly how it works, so if you are using some of my other scripts, you may need this as well.
+'''
+
 import pandas as pd
 import numpy as np
 
