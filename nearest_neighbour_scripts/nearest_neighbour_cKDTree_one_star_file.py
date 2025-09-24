@@ -13,6 +13,7 @@ from scipy.spatial import cKDTree
 import pandas as pd
 import logging
 import numpy as np
+import matplotlib.pyplot as plt
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -26,7 +27,6 @@ class InputData:
     cpu: int = False
     verbose: bool = False
 
-
 def map_coordinates(star: pd.DataFrame, pixel_size: float) -> pd.DataFrame:
     for c in 'XYZ':
         if f'_rlnOrigin{c}' in star.columns:
@@ -37,7 +37,6 @@ def map_coordinates(star: pd.DataFrame, pixel_size: float) -> pd.DataFrame:
             logging.warning(f'No _rlnOrigin{c} or _rlnOrigin{c}Angst column found in star file. Using _rlnCoordinate{c} as is.')
             star[c] = star[f'_rlnCoordinate{c}'] * pixel_size
     return star
-
 
 def open_star(inp: InputData):
     star: pd.DataFrame = st._open_star(inp.star_file,mode=inp.mode)
@@ -70,6 +69,7 @@ def save_output(star: pd.DataFrame, inp: InputData) -> None:
     if not inp.output_folder.exists():
         inp.output_folder.mkdir(parents=True)
     star['dist'].to_csv(inp.output_folder / 'nearest_neighbour.csv', index=False, header=False)
+    save_column_histogram(star, 'dist', inp.output_folder, bins=50, color='blue', alpha=0.7)
     if inp.threshold is not None:
         star = star.loc[star['dist'] < inp.threshold]
         star = star.drop(['X','Y','Z','dist'], axis=1)
@@ -85,13 +85,32 @@ def measure_distances(local_star: pd.DataFrame) -> pd.DataFrame:
     local_star['dist'] = distances[:, 1]
     return local_star
 
+def save_column_histogram(
+    df: pd.DataFrame, 
+    column: str, 
+    out_dir: Path, 
+    bins: int = 30, 
+    figsize=(8, 6), 
+    **kwargs) -> None:
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' not found in DataFrame.")
+    data = df[column].dropna()  # remove NaN values
+    plt.figure(figsize=figsize)
+    plt.hist(data, bins=bins, edgecolor="black", **kwargs)
+    plt.title(f"Histogram of '{column}'")
+    plt.xlabel(column)
+    plt.ylabel("Frequency")
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    plt.savefig(out_dir / 'histogram.png', dpi=300)
+    plt.close()
 
 if __name__ == '__main__':
     inp = InputData(
-        star_file= '/g/scb/mahamid/rasmus/processing/cage_20240417/bin2/Refine3D/job036/run_data.star',
+        star_file= '/scratch/kjeldsen/warp_runs/CM2018/relion/groels/run_001/Refine3D/job014/run_data.star',
         mode = 'new',
-        pixel_size = 3.401,
-        threshold = 250,
+        pixel_size = 4,
+        threshold = 180,
         output_folder = '/g/scb/mahamid/rasmus/tt',
         cpu=1, # Multiprocessing is implemented, but really does not give much improvement unless you have many particles pr. tomogram (2.116 seconds with 1 cpu vs. 2.004 seconds for 60 cpus for 14,000 particles over 356 tomograms)
         verbose=True)
